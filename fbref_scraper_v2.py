@@ -80,7 +80,7 @@ for data_row in full_table.find('tbody').select("tr", class_="data-row="):
       name = player_data.get_text()
       player_stats["player"].append(name) 
       print(name)
-      for k in name_siblings
+      for k in name_siblings:
       
       
        
