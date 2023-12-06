@@ -53,11 +53,11 @@ player_stats = {"player":[]}
   #3)adds to array
 
 
-#finds standard stats table on fbref
+# finds standard stats table on fbref
 full_table= soup.find(id= 'stats_standard')
 
-#one function for all decompose requests 
-#removes standard stats: header, mid row headers, and match colomn
+# one function for all decompose requests 
+# removes standard stats: header, mid row headers, and match colomn
 def decompose_items():
   for x in soup.select('tr.thead'):
         x.decompose()
@@ -66,36 +66,33 @@ def decompose_items():
   for x in full_table.find("tbody").find_all('td',string='Matches'):
         x.decompose()
 decompose_items()
- 
-def stat_id_selector(data_stats_ids):
-    selected_id =[]
-    for stat_id in data_stats_ids:
-        selected_id = 'td[data-stat="'+  stat_id +'"]'
 
-        
-      
-
-stat_id_selector(data_stats_ids)
-
-
+# iterates through lists 
+def list_iterator(list):
+  for item in list:
+    yield item  
     
-def id_selector(stat_id):
-  stat_id_selector()
-  
-  return selected_id
-
-"""def player_stat_creator(selected_id):
-  id_selector()
-  for data_row in full_table.find('tbody').select("tr", class_="data-row="):
-    current_data = data_row.select(selected_id)
-    return current_data
-  
-def player_finder(current_data,stat_id):
-    player_stat_creator()
+def stat_id_selector():
+  for stat_id in list_iterator(data_stats_ids):
+    selected_id = 'td[data-stat="'+  stat_id +'"]'
     if stat_id == "player":
+      global stat_id_player
+      stat_id_player = stat_id 
+    yield selected_id
+    yield stat_id
+        
+def player_stat_creator():
+  for data_row in full_table.find('tbody').select("tr", class_="data-row="):
+    current_data = data_row.select(stat_id_selector())
+    yield current_data
+    # using "gobal" to make stat_id value availible
+  
+def player_finder():
+    player_stat_creator()
+    
        player_stats["player"].append(current_data.get_text())
        name_siblings = current_data.find_next_siblings()
-    return name_siblings
+    yield name_siblings
 
 def find_data(name_siblings,stat_id,selected_id):
   player_finder()
@@ -141,4 +138,3 @@ if id_matcher(stat_id_fuctio)
 
 
 
-"""
