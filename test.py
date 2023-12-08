@@ -89,3 +89,6 @@ for z in player_name_tag:
 
 
 
+    if stat_id == "player":
+      global stat_id_player
+      stat_id_player = stat_id
