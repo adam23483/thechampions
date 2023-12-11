@@ -120,16 +120,14 @@ def player_search(table):
     player = data_row.select('td[data-stat="player"]')
     yield from player
    
-player_search(stat_table)     
-
 # looks for the stat_id in a row of data 
 def id_search(row):
-  for stat_id in list_iterator(data_stats_ids):
+  for stat_id in data_stats_ids:
     selected_id = 'td[data-stat="'+ stat_id +'"]'
     # selected_id = 'td[data-stat="'+  list_iterator(data_stats_ids) +'"]' possible at 
-    for this_stat in list_iterator(row):
-      this_stat.select(selected_id)
-      data_text = this_stat.get_text()
+  for this_stat in row: #"""list_iterator(row)"""
+    this_stat.select(selected_id)
+    data_text = this_stat.get_text()
     print(data_text)
 
 # looks for the siblings in the same row of the player id, giving all related stats 
@@ -137,7 +135,9 @@ def stats_search():
   for player_row in player_search(stat_table):
     name_text = player_row.get_text()
     player.append(name_text)
+    print(name_text)
+
     stats = player_row.find_next_siblings()
-  id_search(stats)
+    id_search(stats)
 
 stats_search()
