@@ -5,7 +5,8 @@ import array as arr
 url = 'https://fbref.com/en/comps/9/stats/Premier-League-Stats'
 response = requests.get(url)
 html_content = response.text.replace('<!--', '').replace('-->', '') #.replace() removes player data comment out  
-soup = BeautifulSoup(html_content, 'lxml')
+
+soup = BeautifulSoup(html_content, 'html.parser')
 
 #list for tags for player data
 data_stats_ids  = [
@@ -124,41 +125,14 @@ def player_search(table):
 
 # looks for the siblings in the same row of the player id, giving all related stats 
 def row_search():
-  for player_row in player_search(stat_table):
-    name_text = player_row.get_text()
-    player_data["player name"].append(name_text)
-    all_stats = player_row.find_next_siblings()
-    print(name_text)
-    print(all_stats)
-    yield from all_stats
+    for player_row in player_search(stat_table):
+        name_text = player_row.get_text()
+        player_data["player name"].append(name_text)
+        all_stats = player_row.find_next_siblings()
+        print(name_text)
 
-def stat_sort(row):
-  for select_this in row:
-    for stat_id in data_stats_ids:
-      selected_id = 'data-stat=' + '"' + stat_id + '"'
-      if selected_id in select_this:
-        return select_this
+        for x in all_stats:
+            nat = x.find_all('tr',attr={"class":'data-stat:"nationality"'})
+            print(nat)
     
-"""    id_stat_pair = str(stat_id + ":" + select_this.get_text())
-    print(id_stat_pair)"""
-  
-  
-
-    
-    
-
-stat_sort(row_search())
-print(player_data)
-
-print("this player rocks" + player_data["player name"][0])
-
-"""  
-stat_text = this_stat.get_text()
-id_and_stat = "" + select_this + ":" + stat_text + ""
-selected_id_list = [] selected_id_list.append(selected_id)
-
-
-      print(stat_text)
-      
-    print(id_and_stat)
-"""
+row_search()
