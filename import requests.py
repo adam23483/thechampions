@@ -4,9 +4,15 @@ import array as arr
 
 url = 'https://fbref.com/en/comps/9/stats/Premier-League-Stats'
 response = requests.get(url)
-html_content = response.text.replace('<!--', '').replace('-->', '') #.replace() removes player data comment out  
 
-soup = BeautifulSoup(html_content, 'html.parser')
+if response.ok:
+  html_content = response.text.replace('<!--', '').replace('-->', '') #.replace() removes player data comment out  
+  soup = BeautifulSoup(html_content, 'html.parser')
+  print("Retrieved HTML content.   "
+        )
+else:
+  print("Failed to retrieve the HTML content.")
+
 
 #list for tags for player data
 data_stats_ids  = [
@@ -125,14 +131,23 @@ def player_search(table):
 
 # looks for the siblings in the same row of the player id, giving all related stats 
 def row_search():
-    for player_row in player_search(stat_table):
-        name_text = player_row.get_text()
-        player_data["player name"].append(name_text)
-        all_stats = player_row.find_next_siblings()
-        print(name_text)
+  for player_row in player_search(stat_table):
+    name_text = player_row.get_text()
+    player_data["player name"].append(name_text)
+    all_stats = player_row.parent
+    print(name_text)
+    yield all_stats
+def stat_search():
+  for x in row_search():
+    for stat_id in data_stats_ids:
+      selected_id = 'td[data-stat="' + stat_id + '"]'
+      print(stat_id)
+      stat = x.select_one(selected_id)
+      for text in stat:
+        if text == None or text == "":
+          stat_text = "0"
+        else:
+          stat_text = text.get_text()
+          print(stat_text)    
+stat_search()
 
-        for x in all_stats:
-            nat = x.find_all('tr',attr={"class":'data-stat:"nationality"'})
-            print(nat)
-    
-row_search()
