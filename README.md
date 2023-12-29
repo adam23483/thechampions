@@ -24,6 +24,13 @@ TheChampions is a project focused on collecting data on soccer players, storing 
      - Returns - Currently "Bukayo Saka" is the best of both worlds: Here are some other players that fit your request: player, player. player
   
 ## Progress Updates 
+### 11/08/2023
+- Began using Github
+- Uploaded all work from local to git 
+  - Ogrinal script
+  - V2 of script
+  - MySQL database stat file 
+
 ### 12/29/2023
 - Python script is working
   - Takes scrapes data from the Standard Stats page for any league on Fbref
