@@ -1,4 +1,4 @@
-# TheChampions Project
+# The Champions Project
 #### Note:
 - This project is free-flowing and my end goals might change over time. 
 - Working on this between school and work so updates will be infrequent 
