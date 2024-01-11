@@ -5,6 +5,7 @@ import json
 import pandas as pd
 import mysql.connector
 from datetime import datetime, timedelta
+import json
 
 url = 'https://fbref.com/en/comps/9/stats/Premier-League-Stats'
 response = requests.get(url)
@@ -17,7 +18,6 @@ if response.ok:
   print("Retrieved HTML content.")
 else:
   print("Failed to retrieve the HTML content.")
-
 
 # list for tags for player data
 data_stats_ids  = [
@@ -55,8 +55,7 @@ data_stats_ids  = [
 "xg_assist_per90",
 "xg_xg_assist_per90",
 "npxg_per90",
-"npxg_xg_assist_per90",
-
+"npxg_xg_assist_per90"
 ]
 #player_stats dict creation
 player_stats = {}
@@ -70,11 +69,6 @@ def age_format(age):
     age_parts = age.split('-')
     years = int(age_parts[0])
     return years
-
-# remove commas from string
-def remove_comma(number):
-    number = number.replace(",", "")
-    return number
 
 # removes standard stats: header, mid row headers, and match colomn
 def decompose_items():
@@ -332,6 +326,57 @@ def get_player_parents():
     print(name_text)
     yield all_stats
 
+# converts stat text to int or float
+def float_zero_int(text):
+  text = text.replace(",", "")
+  try:
+    value = int(text)
+    return value
+  except ValueError:
+    try:
+      value = float(text)
+      return value
+    except ValueError:
+      if text == "0" or text == "":
+        return 0
+      else:
+        return text
+
+# converts position code to position name
+def get_position(position):
+    position_mapping = {
+        'GK': 'Goalkeeper',
+        'DF': 'Defender',
+        'MF': 'Midfielder',
+        'FW': 'Forward',
+        'FB': 'Fullback',
+        'LB': 'Left Back',
+        'RB': 'Right Back',
+        'CB': 'Center Back',
+        'DM': 'Defensive Midfielder',
+        'CM': 'Central Midfielder',
+        'LM': 'Left Midfielder',
+        'RM': 'Right Midfielder',
+        'WM': 'Wide Midfielder',
+        'LW': 'Left Winger',
+        'RW': 'Right Winger',
+        'AM': 'Attacking Midfielder'
+    }
+
+    positions = []
+    current_position = ''
+
+    for x in position:
+        current_position += x
+        if current_position in position_mapping:
+            positions.append(position_mapping[current_position])
+            current_position = ''
+
+    if positions:
+        return ', '.join(positions)
+    else:
+        return 'Unknown Position'      
+
 # finds and adds stats to player_stats dict
 def get_stats():
   for stat_group in get_player_parents():
@@ -339,6 +384,8 @@ def get_stats():
       selected_id = 'td[data-stat="' + stat_id + '"]'     
       stat = stat_group.select_one(selected_id)
       stat_text = stat.get_text() if stat else print("None")
+      # converts stat text to int or float
+      stat_text= float_zero_int(stat_text)
       
       if stat_id == "player":
         this_player = stat_text
@@ -351,36 +398,32 @@ def get_stats():
       # converts age in days to date of birth
       if stat_id == "age":
         stat_text = age_format(stat_text)
-      
-      if stat_id == "minutes":
-        stat_text = remove_comma(stat_text)
-        
+      if stat_id == "position":
+        stat_text = get_position(stat_text)
       # adds stats to player name in dict
       player_stats[this_player].update({stat_id:stat_text})
 
 # run stat_search() function 
 get_stats()
 
-# converts player_stats dict to json
+# converts player_stats dict to json for easy reading
 player_stats_json = json.dumps(player_stats, indent = 4, ensure_ascii=False)
-#print(player_stats_json)
+print(player_stats_json)
 
 # connect to the MySQL database
 cnx = mysql.connector.connect(
   host="localhost",
   user="root",
-  password="6597916n",
+  password="7410",
   database="standard_stats_db"
-  )
-if cnx.is_connected():
-  print("Connected to the MySQL database.   "
-        )
-else:
-    print("Failed to connect to the MySQL database.")
-    
-cursor = cnx.cursor()
+)
 
-# FILEPATH: /c:/Users/zack2/OneDrive/Documents/GitHub/thechampions/fbref_scraper_v3.py
+if cnx.is_connected():
+  print("Connected to the MySQL database.")
+else:
+  print("Failed to connect to the MySQL database.")
+
+cursor = cnx.cursor()
 
 # create the player_stats table in the database
 create_table_query = """
@@ -392,7 +435,7 @@ CREATE TABLE IF NOT EXISTS player_stats (
   birth_year INT,
   games INT,
   games_starts INT,
-  minutes INT,
+  minutes FLOAT,
   minutes_90s INT,
   goals INT,
   assists INT,
@@ -422,32 +465,63 @@ CREATE TABLE IF NOT EXISTS player_stats (
 )
 """
 cursor.execute(create_table_query)
-cnx.commit()
 
-# insert player stats into the player_stats table
-insert_query = """
-  INSERT INTO player_stats(
-    player, position, team, age, birth_year, games, games_starts, minutes, minutes_90s,
-    goals, assists, goals_assists, goals_pens, pens_made, pens_att, cards_yellow, cards_red,
-    xg, npxg, xg_assist, npxg_xg_assist, progressive_carries, progressive_passes,
-    progressive_passes_received, goals_per90, assists_per90, goals_assists_per90,
-    goals_pens_per90, goals_assists_pens_per90, xg_per90, xg_assist_per90,
-    xg_xg_assist_per90, npxg_per90, npxg_xg_assist_per90
-  ) 
-  VALUES(
-    %(player)s, %(position)s, %(team)s, %(age)s, %(birth_year)s, %(games)s, %(games_starts)s,
-    %(minutes)s, %(minutes_90s)s, %(goals)s, %(assists)s, %(goals_assists)s, %(goals_pens)s,
-    %(pens_made)s, %(pens_att)s, %(cards_yellow)s, %(cards_red)s, %(xg)s, %(npxg)s,
-    %(xg_assist)s, %(npxg_xg_assist)s, %(progressive_carries)s, %(progressive_passes)s,
-    %(progressive_passes_received)s, %(goals_per90)s, %(assists_per90)s, %(goals_assists_per90)s,
-    %(goals_pens_per90)s, %(goals_assists_pens_per90)s, %(xg_per90)s, %(xg_assist_per90)s,
-    %(xg_xg_assist_per90)s, %(npxg_per90)s, %(npxg_xg_assist_per90)s
-  )
+# insert the player stats into the database
+for player, stats in player_stats.items():
+  
+  player = stats.get('player', '')
+  position = stats.get('position', '')
+  team = stats.get('team', '')
+  age = stats.get('age', '')
+  birth_year = stats.get('birth_year', '')
+  games = stats.get('games', '')
+  games_starts = stats.get('games_starts', '')
+  minutes = stats.get('minutes', '')
+  minutes_90s = stats.get('minutes_90s', '')
+  goals = stats.get('goals', '')
+  assists = stats.get('assists', '')
+  goals_assists = stats.get('goals_assists', '')
+  goals_pens = stats.get('goals_pens', '')
+  pens_made = stats.get('pens_made', '')
+  pens_att = stats.get('pens_att', '')
+  cards_yellow = stats.get('cards_yellow', '')
+  cards_red = stats.get('cards_red', '')
+  xg = stats.get('xg', '')
+  npxg = stats.get('npxg', '')
+  xg_assist = stats.get('xg_assist', '')
+  npxg_xg_assist = stats.get('npxg_xg_assist', '')
+  progressive_carries = stats.get('progressive_carries', '')
+  progressive_passes = stats.get('progressive_passes', '')
+  progressive_passes_received = stats.get('progressive_passes_received', '')
+  goals_per90 = stats.get('goals_per90', '')
+  assists_per90 = stats.get('assists_per90', '')
+  goals_assists_per90 = stats.get('goals_assists_per90', '')
+  goals_pens_per90 = stats.get('goals_pens_per90', '')
+  goals_assists_pens_per90 = stats.get('goals_assists_pens_per90', '')
+  xg_per90 = stats.get('xg_per90', '')
+  xg_assist_per90 = stats.get('xg_assist_per90', '')
+  xg_xg_assist_per90 = stats.get('xg_xg_assist_per90', '')
+  npxg_per90 = stats.get('npxg_per90', '')
+  npxg_xg_assist_per90 = stats.get('npxg_xg_assist_per90', '')
+  # add more columns as needed and modify the query accordingly
+  insert_query = """
+  REPLACE INTO player_stats (player, position, team, age, birth_year, games, games_starts, minutes, minutes_90s,
+      goals, assists, goals_assists, goals_pens, pens_made, pens_att, cards_yellow, cards_red,
+      xg, npxg, xg_assist, npxg_xg_assist, progressive_carries, progressive_passes,
+      progressive_passes_received, goals_per90, assists_per90, goals_assists_per90,
+      goals_pens_per90, goals_assists_pens_per90, xg_per90, xg_assist_per90,
+      xg_xg_assist_per90, npxg_per90, npxg_xg_assist_per90)
+  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,  
+          %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
+          %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
   """
-cursor.execute(insert_query,player_stats_json)
+  cursor.execute(insert_query, (player, position, team, age, birth_year, games, games_starts, minutes, minutes_90s,
+      goals, assists, goals_assists, goals_pens, pens_made, pens_att, cards_yellow, cards_red,
+      xg, npxg, xg_assist, npxg_xg_assist, progressive_carries, progressive_passes,
+      progressive_passes_received, goals_per90, assists_per90, goals_assists_per90,
+      goals_pens_per90, goals_assists_pens_per90, xg_per90, xg_assist_per90,
+      xg_xg_assist_per90, npxg_per90, npxg_xg_assist_per90))
 
-# commit changes and close connection
 cnx.commit()
 cursor.close()
 cnx.close()
-
