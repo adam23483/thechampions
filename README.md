@@ -37,13 +37,13 @@ TheChampions is a project focused on collecting data on soccer players, storing 
 - Python script is working
   - Takes scraped data from the Standard Stats page for any league on Fbref
   - the next goal is to automate collection from the site into MySQL database organizing by league
-### 12/29/2023
+### 01/11/2024
 - Python to MYSQL database is working
   - Solved issues with text, float, and int formatting
   - Now creating a schema for DB (should have done that before uploading data)
   - Next:
     - automate updating the DB every day or 12 hours 
     - finetune GPT with dataset
-    - create chatbot page with webhosting
+    - create a chatbot page with web hosting
   
 
