@@ -72,7 +72,7 @@ def player_table(cursor, cnx, player_stats):
         """, (player_name, position, nationality, age, birth_year, team_id))
     cnx.commit()
 ###################################################################################
-def current_stats(cursor, cnx, player_stats):
+def current_stats_table(cursor, cnx, player_stats):
     cursor.execute("DROP TABLE IF EXISTS current_stats")
     cnx.commit()
 
@@ -136,12 +136,53 @@ def current_stats(cursor, cnx, player_stats):
         cnx.commit()
 
 ###################################################################################
+
+def expected_stats(cursor, cnx, player_stats):
+    cursor.execute("DROP TABLE IF EXISTS expected_stats")
+    cnx.commit()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS expected_stats (
+            stat_id INT AUTO_INCREMENT PRIMARY KEY,
+            player_id INT,
+            xg FLOAT,
+            npxg FLOAT,
+            xg_assist FLOAT,
+            npxg_xg_assist FLOAT,
+            xg_per90 FLOAT,
+            xg_assist_per90 FLOAT,
+            xg_xg_assist_per90 FLOAT,
+            npxg_per90 FLOAT,
+            npxg_xg_assist_per90 FLOAT,
+            FOREIGN KEY (player_id) REFERENCES player(player_id)
+        );
+    """)
+    cnx.commit()
+
+    for player, stats in player_stats.items():
+        cursor.execute("SELECT player_id FROM player WHERE player_name = %s", (player,))
+        player_id = cursor.fetchone()[0]
+
+        insert_stats_query = """
+            INSERT INTO expected_stats 
+                (player_id, xg, npxg, xg_assist, npxg_xg_assist, xg_per90, xg_assist_per90, 
+                xg_xg_assist_per90, npxg_per90, npxg_xg_assist_per90)
+            VALUES 
+                (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(insert_stats_query, (
+            player_id, stats.get('xg', 0.0), stats.get('npxg', 0.0), stats.get('xg_assist', 0.0), 
+            stats.get('npxg_xg_assist', 0.0), stats.get('xg_per90', 0.0), stats.get('xg_assist_per90', 0.0), 
+            stats.get('xg_xg_assist_per90', 0.0), stats.get('npxg_per90', 0.0), stats.get('npxg_xg_assist_per90', 0.0)
+))
+cnx.commit()
+
+
 league_table(cursor, cnx, player_stats)
 team_table(cursor, cnx, player_stats)
 player_table(cursor, cnx, player_stats)
-current_stats(cursor, cnx, player_stats)
-expected_stats(cursor, cnx, player_stats)
+current_stats_table(cursor, cnx, player_stats)
+expected_stats_table(cursor, cnx, player_stats)
 
-# Close the cursor and connection
 cursor.close()
 cnx.close()
