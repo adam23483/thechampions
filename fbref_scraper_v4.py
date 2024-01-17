@@ -424,7 +424,7 @@ player_stats_json = json.dumps(player_stats, indent = 4, ensure_ascii=False)
 cnx = mysql.connector.connect(
   host="localhost",
   user="root",
-  password="7410",
+  password="6597916n",
   database="standard_stats_db"
 )
 
@@ -433,141 +433,14 @@ if cnx.is_connected():
 else:
   print("Failed to connect to the MySQL database.")
 cursor = cnx.cursor(buffered=True)
-cursor.execute("""DROP TABLE IF EXISTS team""")
-cursor.execute("""DROP TABLE IF EXISTS player_info""")
+
 cursor.execute("""DROP TABLE IF EXISTS current_stats""")
 cursor.execute("""DROP TABLE IF EXISTS expected_stats""")
+cursor.execute("""DROP TABLE IF EXISTS player_info""")
+cursor.execute("""DROP TABLE IF EXISTS team""")
 cursor.execute("""DROP TABLE IF EXISTS league""")
 cnx.commit() 
-###################################################################################
-def player_table (player, position, team, nationality, age, birth_year):
-  
-  player_table_query = """ 
-  CREATE TABLE IF NOT EXISTS player_info (
-  player_id INT AUTO_INCREMENT PRIMARY KEY,
-  player VARCHAR(255),
-  position VARCHAR(255),
-  team VARCHAR(255),
-  nationality VARCHAR(255),
-  age INT,
-  birth_year INT
-  )
-  """
-  cursor.execute(player_table_query)
-  player_insert_query = """
-  REPLACE INTO player_info (player, position, team, nationality, age, birth_year)
-  VALUES ( %s, %s, %s, %s, %s, %s)
-  """
-  cursor.execute(player_insert_query, (player, position, team, nationality, age, birth_year))
-  cnx.commit()
 
-###################################################################################
-def team_table (team):
-
-    team_table_query = """ 
-    CREATE TABLE IF NOT EXISTS team (
-      team_id INT AUTO_INCREMENT PRIMARY KEY,
-      team_name VARCHAR(255),
-      league_id INT
-    )
-    """
-    cursor.execute(team_table_query)
-    team_insert_query = """
-    INSERT INTO team (team_name)
-    VALUES ( %s)
-    """
-    cursor.execute(team_insert_query, (team,))
-    cnx.commit()
-    
-###################################################################################
-def current_stats (games, games_starts, minutes, minutes_90s, goals, 
-            assists, goals_assists, goals_pens, pens_made, pens_att, cards_yellow, 
-            cards_red, progressive_carries, progressive_passes, progressive_passes_received):
-  
-  current_stats_table_query ="""
-      CREATE TABLE IF NOT EXISTS current_stats (
-            current_stats_id INT AUTO_INCREMENT PRIMARY KEY,
-            games INT,
-            games_starts INT,
-            minutes INT,
-            minutes_90s FLOAT,
-            goals INT,
-            assists INT,
-            goals_assists INT,
-            goals_pens INT,
-            pens_made INT,
-            pens_att INT,
-            cards_yellow INT,
-            cards_red INT,
-            progressive_carries INT,  
-            progressive_passes INT,   
-            progressive_passes_received INT
-        );
-    """
-  cursor.execute(current_stats_table_query)
-  current_stats_insert_query = """
-            INSERT INTO current_stats 
-                (games, 
-                games_starts, minutes, 
-                minutes_90s, 
-                goals, 
-                assists, 
-                goals_assists, 
-                goals_pens, 
-                pens_made, 
-                pens_att, 
-                cards_yellow, 
-                cards_red, 
-                progressive_carries, 
-                progressive_passes, 
-                progressive_passes_received)
-            VALUES 
-                (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
-  cursor.execute(current_stats_insert_query, (games, games_starts, minutes, minutes_90s, goals, 
-            assists, goals_assists, goals_pens, pens_made, pens_att, cards_yellow, 
-            cards_red, progressive_carries, progressive_passes, progressive_passes_received))
-  cnx.commit()
-###################################################################################
-
-def expected_stats (xg, npxg, xg_assist,
-                    npxg_xg_assist,xg_per90, xg_assist_per90, 
-                    xg_xg_assist_per90, npxg_per90, npxg_xg_assist_per90):
-  
-  expected_stats_table_query =("""
-        CREATE TABLE IF NOT EXISTS expected_stats (
-            expected_stats_id INT AUTO_INCREMENT PRIMARY KEY,
-            player_id INT,
-            xg FLOAT,
-            npxg FLOAT,
-            xg_assist FLOAT,
-            npxg_xg_assist FLOAT,
-            xg_per90 FLOAT,
-            xg_assist_per90 FLOAT,
-            xg_xg_assist_per90 FLOAT,
-            npxg_per90 FLOAT,
-            npxg_xg_assist_per90 FLOAT
-        );
-    """)
-  cursor.execute(expected_stats_table_query)
-  expected_stats_insert_query = """
-            INSERT INTO expected_stats(
-            xg,
-            npxg,
-            xg_assist,
-            npxg_xg_assist,
-            xg_per90,
-            xg_assist_per90,
-            xg_xg_assist_per90,
-            npxg_per90 ,
-            npxg_xg_assist_per90
-            )
-            VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
-  cursor.execute(expected_stats_insert_query, (xg, npxg, xg_assist, 
-                                               npxg_xg_assist, xg_per90, xg_assist_per90, 
-                                               xg_xg_assist_per90, npxg_per90, npxg_xg_assist_per90))
-  cnx.commit()
 ###################################################################################
 def league_table(league, season):
   league_table_query = """
@@ -584,61 +457,225 @@ def league_table(league, season):
     """
   cursor.execute(league_insert_query, (league, season))
   cnx.commit()
+  league_id = cursor.lastrowid
+  return league_id
+
+###################################################################################
+def team_table (team, league_id):
+
+    team_table_query = """ 
+    CREATE TABLE IF NOT EXISTS team (
+      team_id INT AUTO_INCREMENT PRIMARY KEY,
+      team_name VARCHAR(255),
+      league_id INT,
+      FOREIGN KEY (league_id) REFERENCES league(league_id)
+    )
+    """
+    cursor.execute(team_table_query)
+    team_insert_query = """
+    INSERT INTO team (team_name, league_id)
+    VALUES ( %s,%s)
+    """
+    cursor.execute(team_insert_query, (team, league_id))
+    cnx.commit()
+    team_id = cursor.lastrowid
+    return team_id
+###################################################################################
+def player_table (player, position, team_id, nationality, age, birth_year):
+  
+  player_table_query = """ 
+  CREATE TABLE IF NOT EXISTS player_info (
+  player_id INT AUTO_INCREMENT PRIMARY KEY,
+  player VARCHAR(255),
+  position VARCHAR(255),
+  team_id INT,
+  nationality VARCHAR(255),
+  age INT,
+  birth_year INT,
+  FOREIGN KEY (team_id) REFERENCES team(team_id)
+  )
+  """
+  cursor.execute(player_table_query)
+  player_insert_query = """
+  INSERT INTO player_info (player, position, team_id, nationality, age, birth_year)
+  VALUES ( %s, %s, %s, %s, %s, %s)
+  """
+  cursor.execute(player_insert_query, (player, position, team_id, nationality, age, birth_year))
+  cnx.commit()
+  player_id = cursor.lastrowid
+  return player_id
+
+###################################################################################
+def current_stats_table (player_id, games, games_starts, minutes, minutes_90s, goals, 
+            assists, goals_assists, goals_pens, pens_made, pens_att, cards_yellow, 
+            cards_red, progressive_carries, progressive_passes, progressive_passes_received, goals_per90, assists_per90, goals_assists_per90, goals_pens_per90, goals_assists_pens_per90
+):
+  
+  current_stats_table_query ="""
+      CREATE TABLE IF NOT EXISTS current_stats (
+            current_stats_id INT AUTO_INCREMENT PRIMARY KEY,
+            player_id INT,
+            games INT,
+            games_starts INT,
+            minutes INT,
+            minutes_90s FLOAT,
+            goals INT,
+            assists INT,
+            goals_assists INT,
+            goals_pens INT,
+            pens_made INT,
+            pens_att INT,
+            cards_yellow INT,
+            cards_red INT,
+            progressive_carries INT,  
+            progressive_passes INT,   
+            progressive_passes_received INT,
+            goals_per90 FLOAT,
+            assists_per90 FLOAT,
+            goals_assists_per90 FLOAT,
+            goals_pens_per90 FLOAT,
+            goals_assists_pens_per90 FLOAT,
+            FOREIGN KEY (player_id) REFERENCES player_info(player_id)
+        )
+    """
+  cursor.execute(current_stats_table_query)
+  current_stats_insert_query = """
+            INSERT INTO current_stats(
+            player_id,
+            games, 
+            games_starts, 
+            minutes, 
+            minutes_90s, 
+            goals, 
+            assists, 
+            goals_assists, 
+            goals_pens, 
+            pens_made, 
+            pens_att, 
+            cards_yellow, 
+            cards_red, 
+            progressive_carries, 
+            progressive_passes, 
+            progressive_passes_received,
+            goals_per90,
+            assists_per90,
+            goals_assists_per90,
+            goals_pens_per90,
+            goals_assists_pens_per90
+        )
+        VALUES 
+            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """
+  cursor.execute(current_stats_insert_query, (player_id, games, games_starts, minutes, minutes_90s, goals, 
+            assists, goals_assists, goals_pens, pens_made, pens_att, cards_yellow, 
+            cards_red, progressive_carries, progressive_passes, progressive_passes_received,
+            goals_per90, assists_per90, goals_assists_per90, goals_pens_per90, goals_assists_pens_per90
+            ))
+  cnx.commit()
 ###################################################################################
 
-team_list = []
-league_table(league, season)  
-for player, stats in player_stats.items():
-  player = stats.get('player', '')
-  position = stats.get('position', '')
-  team = stats.get('team', '')
-  nationality = stats.get('nationality', '')
-  age = stats.get('age', '')
-  birth_year = stats.get('birth_year', '')
-  games = stats.get('games', '')
-  games_starts = stats.get('games_starts', '')
-  minutes = stats.get('minutes', '')
-  minutes_90s = stats.get('minutes_90s', '')
-  goals = stats.get('goals', '')
-  assists = stats.get('assists', '')
-  goals_assists = stats.get('goals_assists', '')
-  goals_pens = stats.get('goals_pens', '')
-  pens_made = stats.get('pens_made', '')
-  pens_att = stats.get('pens_att', '')
-  cards_yellow = stats.get('cards_yellow', '')
-  cards_red = stats.get('cards_red', '')
-  xg = stats.get('xg', '')
-  npxg = stats.get('npxg', '')
-  xg_assist = stats.get('xg_assist', '')
-  npxg_xg_assist = stats.get('npxg_xg_assist', '')
-  progressive_carries = stats.get('progressive_carries', '')
-  progressive_passes = stats.get('progressive_passes', '')
-  progressive_passes_received = stats.get('progressive_passes_received', '')
-  goals_per90 = stats.get('goals_per90', '')
-  assists_per90 = stats.get('assists_per90', '')
-  goals_assists_per90 = stats.get('goals_assists_per90', '')
-  goals_pens_per90 = stats.get('goals_pens_per90', '')
-  goals_assists_pens_per90 = stats.get('goals_assists_pens_per90', '')
-  xg_per90 = stats.get('xg_per90', '')
-  xg_assist_per90 = stats.get('xg_assist_per90', '')
-  xg_xg_assist_per90 = stats.get('xg_xg_assist_per90', '')
-  npxg_per90 = stats.get('npxg_per90', '')
-  npxg_xg_assist_per90 = stats.get('npxg_xg_assist_per90', '')
+def expected_stats_table (player_id, xg, npxg, xg_assist,
+                    npxg_xg_assist,xg_per90, xg_assist_per90, 
+                    xg_xg_assist_per90, npxg_per90, npxg_xg_assist_per90):
   
-  player_table(player, position, team, nationality, age, birth_year)
+  expected_stats_table_query =("""
+        CREATE TABLE IF NOT EXISTS expected_stats (
+            expected_stats_id INT AUTO_INCREMENT PRIMARY KEY,
+            player_id INT,
+            xg FLOAT,
+            npxg FLOAT,
+            xg_assist FLOAT,
+            npxg_xg_assist FLOAT,
+            xg_per90 FLOAT,
+            xg_assist_per90 FLOAT,
+            xg_xg_assist_per90 FLOAT,
+            npxg_per90 FLOAT,
+            npxg_xg_assist_per90 FLOAT,
+            FOREIGN KEY (player_id) REFERENCES player_info(player_id)
+        );
+    """)
+  cursor.execute(expected_stats_table_query)
+  expected_stats_insert_query = """
+            INSERT INTO expected_stats(
+            player_id,
+            xg,
+            npxg,
+            xg_assist,
+            npxg_xg_assist,
+            xg_per90,
+            xg_assist_per90,
+            xg_xg_assist_per90,
+            npxg_per90, 
+            npxg_xg_assist_per90
+            )
+            VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+  cursor.execute(expected_stats_insert_query, (player_id,xg, npxg, xg_assist, 
+                                               npxg_xg_assist, xg_per90, xg_assist_per90, 
+                                               xg_xg_assist_per90, npxg_per90, npxg_xg_assist_per90))
+  cnx.commit()
+
+###################################################################################
+def create_tables():
+  league_id = league_table(league, season)
+  team_list = []
+ 
+  for player, stats in player_stats.items():
+    player = stats.get('player', '')
+    position = stats.get('position', '')
+    team = stats.get('team', '')
+    nationality = stats.get('nationality', '')
+    age = stats.get('age', '')
+    birth_year = stats.get('birth_year', '')
+    games = stats.get('games', '')
+    games_starts = stats.get('games_starts', '')
+    minutes = stats.get('minutes', '')
+    minutes_90s = stats.get('minutes_90s', '')
+    goals = stats.get('goals', '')
+    assists = stats.get('assists', '')
+    goals_assists = stats.get('goals_assists', '')
+    goals_pens = stats.get('goals_pens', '')
+    pens_made = stats.get('pens_made', '')
+    pens_att = stats.get('pens_att', '')
+    cards_yellow = stats.get('cards_yellow', '')
+    cards_red = stats.get('cards_red', '')
+    xg = stats.get('xg', '')
+    npxg = stats.get('npxg', '')
+    xg_assist = stats.get('xg_assist', '')
+    npxg_xg_assist = stats.get('npxg_xg_assist', '')
+    progressive_carries = stats.get('progressive_carries', '')
+    progressive_passes = stats.get('progressive_passes', '')
+    progressive_passes_received = stats.get('progressive_passes_received', '')
+    goals_per90 = stats.get('goals_per90', '')
+    assists_per90 = stats.get('assists_per90', '')
+    goals_assists_per90 = stats.get('goals_assists_per90', '')
+    goals_pens_per90 = stats.get('goals_pens_per90', '')
+    goals_assists_pens_per90 = stats.get('goals_assists_pens_per90', '')
+    xg_per90 = stats.get('xg_per90', '')
+    xg_assist_per90 = stats.get('xg_assist_per90', '')
+    xg_xg_assist_per90 = stats.get('xg_xg_assist_per90', '')
+    npxg_per90 = stats.get('npxg_per90', '')
+    npxg_xg_assist_per90 = stats.get('npxg_xg_assist_per90', '')
+    
+    if team not in team_list:
+      team_list.append(team)
+      team_id = team_table(team,league_id)
+
+    player_id = player_table(player, position, team_id, nationality, age, birth_year) 
   
-  if team not in team_list:
-    team_list.append(team)
-    print(team)
-    team_table(team)
-  
-  current_stats(games, games_starts, minutes, minutes_90s, goals, assists, goals_assists, goals_pens, pens_made, pens_att, 
-                cards_yellow, cards_red, progressive_carries, progressive_passes, 
-                progressive_passes_received)
-  
-  expected_stats(xg, npxg, xg_assist,npxg_xg_assist, 
-                 xg_per90, xg_assist_per90, xg_xg_assist_per90, 
-                 npxg_per90, npxg_xg_assist_per90)
+    
+    current_stats_table(player_id,games, games_starts, minutes, minutes_90s, goals, 
+            assists, goals_assists, goals_pens, pens_made, pens_att, cards_yellow, 
+            cards_red, progressive_carries, progressive_passes, progressive_passes_received,
+            goals_per90, assists_per90, goals_assists_per90, goals_pens_per90, goals_assists_pens_per90
+            )
+    
+    expected_stats_table (player_id, xg, npxg, xg_assist,
+                    npxg_xg_assist,xg_per90, xg_assist_per90, 
+                    xg_xg_assist_per90, npxg_per90, npxg_xg_assist_per90)
+    
+create_tables()
+    
 cnx.commit()
 cursor.close()
 cnx.close()
