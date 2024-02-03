@@ -707,40 +707,41 @@ get_data(serie_a)
 get_data(bundesliga)
 get_data(ligue_1)
 
-"""
-# CHATGPT 3.5 INTEGRATION ##############################################################################################################
-def gpt_fetch_data(query):
-    cursor.execute(query)
-    result = cursor.fetchall()
-    return result
+# CHATGPT 3.5 INTEGRATION #############################################################################################################
 
-# Function to interact with GPT-3.5
-def query_gpt_3_5(prompt):
-    openai.api_key = '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'
-    response = openai.Completion.create(
-      model="text-davinci-003",
-      prompt=prompt,
-      max_tokens=150
-    )
-    return response.choices[0].text.strip()
+def gpt_fetch_data(sql_query):
 
-# Main logic
+  cursor.execute(sql_query)
+  data = cursor.fetchall()
+  return data
+# formats the data from the database for GPT-3.5.
+def format_data_for_gpt(data):
+  formatted_data = ""
+  for row in data:
+        # Convert each row to a formatted string.
+        # Adjust the formatting based on your specific data structure.
+        row_str = ", ".join(str(item) for item in row)
+        formatted_data += f"{row_str}\n"
+        return formatted_data
+
+# Example usage in your main function
 def main():
-    data = gpt_fetch_data("SELECT * FROM your_table")
-    # Process and format your data as needed
-    formatted_data = format_data_for_gpt(data)
+  # Fetch data from your database using a specific query
+  sql_query = "SELECT * FROM standard_stats_db.player_info"
+  data = gpt_fetch_data(sql_query)
 
-    # Query GPT-3.5
-    gpt_response = query_gpt_3_5(formatted_data)
+  # Format the data for GPT-3.5
+  formatted_data = format_data_for_gpt(data)
 
-    # Process GPT-3.5 response
-    process_gpt_response(gpt_response)
+  # Continue with your GPT-3.5 query...
+  gpt_response = query_gpt_3_5(formatted_data)
 
-if __name__ == "__main__":
-    main()
+  # Process GPT-3.5 response...
+  process_gpt_response(gpt_response)
 
+# Call the main function to execute the code
+main()
 
-
-"""
 cursor.close()
 cnx.close()
+
