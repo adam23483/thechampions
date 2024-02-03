@@ -56,7 +56,7 @@ TheChampions is a project focused on collecting data on soccer players, storing 
   - Schema for DB, (FK, PK setup as well)
   - added Excel export from the MySQL database
   - Next: 
-    -add previous seasons 
+    - add previous seasons 
     - create Power PI dashboard  
     - finetune GPT with dataset
     - create chatbot that can integrate with the dashboard based on training data
