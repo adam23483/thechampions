@@ -1,11 +1,7 @@
 # The Champions Project
-#### Note:
-- This project is free-flowing and my end goals might change over time. 
-- Working on this between school and work so updates will be infrequent 
-
 
 ## Overview
-TheChampions is a project focused on collecting data on soccer players, storing it in an SQL database hosted on AWS, and developing a dashbaord for data analysis. Additionally, the project aims to integrate a Generative AI (Gen AI) to provide insights based on the dataset.
+TheChampions is a project focused on collecting data on soccer players, storing it in an SQL database hosted on AWS, and developing a dashboard for data analysis. Additionally, the project aims to integrate a Generative AI (Gen AI) to provide insights based on the dataset.
 
 ## Goals
 - Collecting data on soccer players
