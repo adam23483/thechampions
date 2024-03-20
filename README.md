@@ -41,7 +41,7 @@ TheChampions is a project focused on collecting data on soccer players, storing 
     - automate updating the DB every day or 12 hours 
     - finetune GPT with dataset
     - create a chatbot page with web hosting
-  ### 02/02/2024
+### 02/02/2024
 - Python to MYSQL database is working 
   - Data from:
     - Premier League = 'https://fbref.com/en/comps/9/stats/Premier-League-Stats'
@@ -53,8 +53,21 @@ TheChampions is a project focused on collecting data on soccer players, storing 
   - added Excel export from the MySQL database
   - Next: 
     - add previous seasons 
-    - create Power PI dashboard  
+    - create PowerBI dashboard  
     - finetune GPT with dataset
     - create chatbot that can integrate with the dashboard based on training data
     - automate updating the DB every day or 12 hours ***on hold until all other tasks are done***
-
+### 03/19/2024
+- Reworking Python to MYSQL database script   
+  - Needed more data for player performance 9 more pages per league 
+    - New script dynamically scrapes data from each page. 
+    - creates json for easy reading and bug fixing  
+  - Adding data from Transfermarkt  
+    - new data - transfer values, salaries, contract info, player physical stats
+  - Power PI dashboard  
+    - Created Power PI dashboard
+      - reworking after all data is ready for 2023/2024 database
+  - Next: 
+    - finetune GPT with dataset 
+    - create a chatbot that can integrate with the dashboard based on training data for prompts 
+    - automate updating the DB every day or 12 hours ***on hold until all other tasks are done***
