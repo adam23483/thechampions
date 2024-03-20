@@ -1,11 +1,7 @@
 # The Champions Project
-#### Note:
-- This project is free-flowing and my end goals might change over time. 
-- Working on this between school and work so updates will be infrequent 
-
 
 ## Overview
-TheChampions is a project focused on collecting data on soccer players, storing it in a MySQL database, creating a Rest API hosted on AWS, and developing a frontend for data analysis. Additionally, the project aims to integrate a Generative AI (Gen AI) to provide insights based on the collected dataset.
+TheChampions is a project focused on collecting data on soccer players, storing it in an SQL database hosted on AWS, and developing a dashboard for data analysis. Additionally, the project aims to integrate a Generative AI (Gen AI) to provide insights based on the dataset.
 
 ## Goals
 - Collecting data on soccer players
@@ -14,11 +10,11 @@ TheChampions is a project focused on collecting data on soccer players, storing 
   - automate the web scraping, ie every day update stats
   - 
 - Creating a database to store the data
-  -  MySQL database
-  -  Create Rest API: to be hosted on AWS
-    
+  -  MySQL database - *currently stored locally but will move to AWS*
+  
 - Fronted to Display/Filter data for easy analysis
-  - graphs, tables, in-form players
+  - Power BI dashboard
+    - graphs, tables, in-form players
 
 - Gen AI integration
   - Using dataset to train/fine-tune GPT or similar models for queries
