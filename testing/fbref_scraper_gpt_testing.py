@@ -6,7 +6,6 @@ import pandas as pd
 import mysql.connector
 from datetime import datetime, timedelta
 import json
-import pandas as pd
 #import openai
 
 cnx = mysql.connector.connect(
@@ -28,7 +27,7 @@ cursor.execute("""DROP TABLE IF EXISTS player_info""")
 cursor.execute("""DROP TABLE IF EXISTS teams""")
 cursor.execute("""DROP TABLE IF EXISTS league""")
  
-# links to fbref league stats for each league for 2021/2022 season
+
 premier_league = 'https://fbref.com/en/comps/9/stats/Premier-League-Stats'
 la_liga = 'https://fbref.com/en/comps/12/stats/La-Liga-Stats'
 serie_a= 'https://fbref.com/en/comps/11/stats/Serie-A-Stats'
@@ -49,6 +48,7 @@ def get_data(url):
     print("Failed to retrieve the HTML content.")
 
   # list for tags for player data
+
   data_stats_ids  = [
   "player",
   "nationality",
@@ -337,7 +337,8 @@ def get_data(url):
       'yu': 'Yugoslavia',
       'zm': 'Zambia',
       'zw': 'Zimbabwe',
-      'za': 'South Africa'
+      'za': 'South Africa',
+      "si": "Slovenia"
   }
     for code, country in country_mapping.items():
       if isinstance(country_code,str) == False:
@@ -452,14 +453,12 @@ def get_data(url):
   get_stats()
 
   # converts player_stats dict to json for easy reading
-  """
   player_stats_json = json.dumps(player_stats, indent = 4, ensure_ascii=False)
-  print (player_stats_json)
-  """
+  #print (player_stats_json)
+
   # connect to the MySQL database
 
   ###################################################################################
-# creates and fills league table
   def league_table(league, season):
     league_table_query = """
       CREATE TABLE IF NOT EXISTS league (
@@ -479,8 +478,8 @@ def get_data(url):
     return league_id
 
   ###################################################################################
-# creates and fills team table
   def team_table (team, league_id):
+      team_id = []
       team_table_query = """ 
       CREATE TABLE IF NOT EXISTS teams (
         team_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -502,14 +501,11 @@ def get_data(url):
       cnx.commit()
 
       find_team_id = """ SELECT team_id FROM teams WHERE team_name = (%s) """
-      
       cursor.execute(find_team_id, (team,))
       fetch_team_id = cursor.fetchone()
       fetch_team_id = fetch_team_id[0]
-      
       return fetch_team_id  
   ###################################################################################
-  #creates and fills player_info table
   def player_table (player, position, team_id, nationality, age, birth_year):
     
     player_table_query = """ 
@@ -535,7 +531,6 @@ def get_data(url):
     return player_id
 
   ###################################################################################
-  # creates and fills current_stats table
   def current_stats_table (player_id, games, games_starts, minutes, minutes_90s, goals, 
               assists, goals_assists, goals_pens, pens_made, pens_att, cards_yellow, 
               cards_red, progressive_carries, progressive_passes, progressive_passes_received, goals_per90, assists_per90, goals_assists_per90, goals_pens_per90, goals_assists_pens_per90
@@ -706,44 +701,48 @@ def get_data(url):
    
   cnx.commit()
   
-# runs get_data function for each league from links 
+
 get_data(premier_league)
 get_data(la_liga)
 get_data(serie_a)
 get_data(bundesliga)
 get_data(ligue_1)
 
-# export to excel file ############################################################################################################
+# CHATGPT 3.5 INTEGRATION #############################################################################################################
 
-# query data from a table and return a dataFrame
-def query_to_dataframe(sql_query, connection):
-    return pd.read_sql_query(sql_query, connection)
+def gpt_fetch_data(sql_query):
 
-# export data to Excel
-def export_to_excel(dataframes, sheet_names, file_name):
-    with pd.ExcelWriter(file_name, engine='openpyxl') as writer:
-        for dataframe, sheet_name in zip(dataframes, sheet_names):
-            dataframe.to_excel(writer, sheet_name=sheet_name, index=False)
+  cursor.execute(sql_query)
+  data = cursor.fetchall()
+  return data
+# formats the data from the database for GPT-3.5.
+def format_data_for_gpt(data):
+  formatted_data = ""
+  for row in data:
+        # Convert each row to a formatted string.
+        # Adjust the formatting based on your specific data structure.
+        row_str = ", ".join(str(item) for item in row)
+        formatted_data += f"{row_str}\n"
+        return formatted_data
 
-queries = [
-    "SELECT * FROM league",
-    "SELECT * FROM teams",
-    "SELECT * FROM player_info",
-    "SELECT * FROM current_stats",
-    "SELECT * FROM expected_stats"
-]
+# Example usage in your main function
+def main():
+  # Fetch data from your database using a specific query
+  sql_query = "SELECT * FROM standard_stats_db.player_info"
+  data = gpt_fetch_data(sql_query)
 
-# sheet names for the Excel file
-sheets = ['League', 'Teams', 'Player Info', 'Current Stats', 'Expected Stats']
+  # Format the data for GPT-3.5
+  formatted_data = format_data_for_gpt(data)
 
-# get data for each query and store in list
-dataframes = [query_to_dataframe(query, cnx) for query in queries]
+  # Continue with your GPT-3.5 query...
+  gpt_response = query_gpt_3_5(formatted_data)
 
-# export to an excel file
-export_to_excel(dataframes, sheets, 'soccer_stats.xlsx')
+  # Process GPT-3.5 response...
+  process_gpt_response(gpt_response)
 
-print("Data has been exported to 'soccer_stats.xlsx'")
+# Call the main function to execute the code
+main()
 
-# close cursor and the connection to the database #######################################################################################
 cursor.close()
 cnx.close()
+
