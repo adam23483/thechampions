@@ -1,5 +1,7 @@
 # The Champions Project
 ## PowerBI Dashboard here: https://app.powerbi.com/groups/me/reports/e4ebd868-41d8-4360-868b-0653656930b7/ReportSection?experience=power-bi
+![image](https://github.com/adam23483/thechampions/assets/63423355/778082ff-388b-454d-9c1d-0273d7f8cfa6)
+
 ## Overview
 TheChampions is a project focused on collecting data on soccer players, storing it in an SQL database hosted on AWS, and developing a dashboard for data analysis. Additionally, the project aims to integrate a Generative AI (Gen AI) to provide insights based on the dataset.
 
