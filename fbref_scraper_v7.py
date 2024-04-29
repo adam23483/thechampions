@@ -3,6 +3,9 @@ from bs4 import BeautifulSoup
 import mysql.connector
 import json
 import time
+import asyncio
+import aiohttp
+
 
 # mysql database connection ###################################################
 cnx = mysql.connector.connect(
@@ -54,9 +57,10 @@ def get_datatype(all_stats, id_datatype):
                                 id_datatype.update({stat: "FLOAT"})
                             except ValueError:
                                 id_datatype.update({stat: "VARCHAR(255)"})
-# converts country code to country name #######################################                         
 
+# converts country code to country name #######################################                         
 def get_country_name(country_code):
+    # country code mapping
     country_mapping = {
       "af": "Afghanistan",
       "al": "Albania",
@@ -404,6 +408,7 @@ def get_json_data(stats_dict,league):
         
 # creates urls for each stat type in a league ################################
 def get_stat_urls(league_url):
+    seasons = ("2019-2020", "2020-2021", "2021-2022", "2022-2023")
     # stat_type structure: {"name of page in league url" : "table in db"} 
     stat_type = {"stats" : "standard_stats", "keepers" : "goal_keeping_stats","keepersadv" : "adv_goal_keeping_stats",
                 "shooting" : "shooting_stats","passing" : "passing_stats","passing_types" : "adv_passing_stats",
@@ -413,6 +418,9 @@ def get_stat_urls(league_url):
     for stat, table in stat_type.items():
         current_stat_type = league_url.replace("/stats/", f"/{stat}/")
         urls_list.update({current_stat_type:table})
+        for season in seasons:
+            current_season = current_stat_type.replace("Stats", f"{season}/stats/{season}-")
+            urls_list.update({current_season:table})
     return urls_list
 
     # create tables  ###############################################################
@@ -496,6 +504,8 @@ def create_base_tables(cursor, id_datatype):
 # upload data to mysql database ##############################################
 def upload_data(all_stats, id_datatype, cursor):
     create_base_tables(cursor, id_datatype)
+    
+    # insert data into leagues table
     for league, stats in all_stats["leagues"].items():
         league_id = stats["league_id"]
         league_name = league
@@ -504,7 +514,8 @@ def upload_data(all_stats, id_datatype, cursor):
             cnx.commit()
         except mysql.connector.Error as error:
             print(f"Failed to insert data for {league_name} in table leagues - Error: {error}")
-               
+    
+    # insert data into seasons table           
     for season, stats in all_stats["seasons"].items():
         season_id = stats["season_id"]
         season_name = season
@@ -514,6 +525,7 @@ def upload_data(all_stats, id_datatype, cursor):
         except mysql.connector.Error as error:
             print(f"Failed to insert data for {season_name} in table seasons - Error: {error}")
     
+    # insert data into teams table
     for team, stats in all_stats["teams"].items():
         team_id = stats["team_id"]
         team_name = team
@@ -523,6 +535,7 @@ def upload_data(all_stats, id_datatype, cursor):
         except mysql.connector.Error as error:
             print(f"Failed to insert data for {team_name} in table teams - Error: {error}")
     
+    # insert data into players and player_stats table
     for player, stats in all_stats["players"].items():
         player_info = stats["player_info"]
         player_id = player_info["player_id"]
@@ -553,20 +566,24 @@ def upload_data(all_stats, id_datatype, cursor):
             cnx.commit()
         except mysql.connector.Error as error:
             print(f"Failed to insert data for {player} in table player_stats - Error: {error}")
+        # generate update sql for player stats
         for stat, value in player_stats.items():
             if stat == "player_id" or stat == "league_id" or stat == "season_id" or stat == "team_id":
                 continue
             if stat in id_datatype:
-                if id_datatype[stat] == "VARCHAR(255)":
-                    if value == "None":
-                        value = "NULL"
-                    pass
+                if value == "None":
+                    value = 0
+                
+                if id_datatype[stat] == "VARCHAR(255)" and value != None:
+                    #fixes sql error with Nonetype values
+                    # fixes sql error with apostrophes
                     if "'" in value:
                         value = value.replace("'", "''")
                     pass
                     value = f"'{value}'"
                 pass
             update_player_stats_sql += f"{stat} = {value}"
+            # add comma if not last stat
             if count < length - 5:
                 update_player_stats_sql += ", "
                 count += 1
@@ -578,13 +595,49 @@ def upload_data(all_stats, id_datatype, cursor):
             cnx.commit()
         except mysql.connector.Error as error:
             print(f"Failed to insert data for {player} in table player_stats - Error: {error}")
+    # removes columns from player_stats table > weird bug with the update sql, so removed columns
     cursor.execute("ALTER TABLE player_stats DROP COLUMN league;")
     cursor.execute("ALTER TABLE player_stats DROP COLUMN season;")
     cursor.execute("ALTER TABLE player_stats DROP COLUMN team;")
     cursor.execute("ALTER TABLE player_stats DROP COLUMN player;")
     cursor.execute("ALTER TABLE player_stats DROP COLUMN nationality;")
     cursor.execute("ALTER TABLE player_stats DROP COLUMN position;")
-    
+
+# finds stats table on fbref
+def get_stats_table(soup):
+    full_table = ""
+    for x in soup.select("th"):
+        x.decompose()
+
+    # find the table with the player stats 
+    for table in get_stats_table:
+        table_caption = table.find("caption")
+        table_name_text = table_caption.get_text()
+        if "Player" in table_name_text:
+            full_table = table_caption.parent
+    return full_table     
+
+def get_html_content(url):
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+    }
+
+async def fetch(session, url):
+    async with session.get(url) as response:
+        if response.status == 200:
+            html_content = await response.text()
+            html_content = response.text.replace("<!--", "").replace("-->", "")
+            return html_content
+        else:
+            print(f"Failed - League: {url}")
+            print(response.reason)
+            return None
+
+async def fetch_all(urls):
+    async with aiohttp.ClientSession() as session:
+        tasks = [fetch(session, url) for url in urls]
+        return await asyncio.gather(*tasks)
+
 # gets player stats from fbref and inserts into mysql database ###############
 def get_data(league_urls):
     headers = {
@@ -598,98 +651,111 @@ def get_data(league_urls):
     league_id = 0
     player_id = 0
     team_id = 0
-    season_id = 0 
+    season_id = 0
     for url in league_urls:
         stats_dict = {}
+        all_urls = []
         url_list = get_stat_urls(url)
-        for url, table_name in url_list.items():
-            stats_dict.update({table_name:{}})
-            response = requests.get(url,headers=headers)
-            if response.ok:
-                # .replace() removes player data comment out to see player data
-                html_content = response.text.replace("<!--", "").replace("-->", "")
-                soup = BeautifulSoup(html_content, "html5lib")
-                league, season, = get_caption(soup)
-                league_and_season = f"{league} - {season}"
-                if league not in league_dict:
-                    league_id += 1
-                    league_dict.update({league :{"league_id": league_id}})
-                else:
-                    league_id = league_dict[league]["league_id"]
-                if season not in season_dict:
-                    season_id += 1
-                    season_dict.update({season:{"season_id":season_id}})
-                else:
-                    season_id = season_dict[season]["season_id"]
-            else:
-                print(f"Failed - League: {url}")
-                print(response.reason)
-
-            # finds stats table on fbref
-            get_stats_table = soup.find_all("table")
-            full_table = ""
-            for x in soup.select("th"):
-                x.decompose()
-
-            # find the table with the player stats 
-            for table in get_stats_table:
-                table_caption = table.find("caption")
-                table_name_text = table_caption.get_text()
-                if "Player" in table_name_text:
-                    full_table = table_caption.parent
-                            
-            # finds the data-stat ids and create key/value pair for player stats
-            stats_table = full_table.find_all("tr")
-            for rows in stats_table:
-                stat_column = rows.find_all("td")
-                for stat in stat_column:
-                    if stat is not None:
-                        stat_tag = stat["data-stat"]
-                        player_stat = stat.get_text()
-                        player_stat = float_zero_int(player_stat)
-                        if stat_tag == "age":
-                            player_stat = age_format(player_stat)
-                        if stat_tag == "position":
-                            player_stat = get_position(player_stat)
-                        if stat_tag == "nationality":
-                            player_stat = get_country_name(player_stat)
-                        if stat_tag == "team":
-                            if player_stat not in team_dict:
-                                team_id += 1
-                                team_dict.update({player_stat:{"team_id": team_id}})
+        all_urls.extend(url_list.keys())
+    html_contents = asyncio.run(fetch_all(all_urls))
+    # You'd then parse these HTML contents as needed, similar to your original loop
+    for html in html_contents:
+        stat_type = {"stats" : "standard_stats", "keepers" : "goal_keeping_stats","keepersadv" : "adv_goal_keeping_stats",
+            "shooting" : "shooting_stats","passing" : "passing_stats","passing_types" : "adv_passing_stats",
+            "gca" : "goal_shot_creation_stats","defense" : "defensive_actions_stats","possession" : "possession_stats",
+            "misc" : "miscellaneous_stats"}        
+        for stat_name in stat_type:
+            if stat_name in html:
+                table_name = stat_type[stat_name]
+                stats_dict.update({table_name:{}})
+                pass
+        if html:     
+            soup = BeautifulSoup(html, "html5lib")
+        #finds league and season
+        league, season, = get_caption(soup)
+        league_and_season = f"{league} - {season}"
+        #update league and season id and add to dictionary
+        if league not in league_dict:
+            league_id += 1
+            league_dict.update({league :{"league_id": league_id}})
+        else:
+            league_id = league_dict[league]["league_id"]
+        if season not in season_dict:
+            season_id += 1
+            season_dict.update({season:{"season_id":season_id}})
+        else:
+            season_id = season_dict[season]["season_id"]
+        # finds stats table on fbref
+        full_table = get_stats_table(soup)               
+        # finds the data-stat ids and create key/value pair for player stats
+        stats_table = full_table.find_all("tr")
+        for rows in stats_table:
+            stat_column = rows.find_all("td")
+            for stat in stat_column:
+                if stat is not None:
+                    stat_tag = stat["data-stat"]
+                    # get text from each stat
+                    player_stat = stat.get_text()
+                    # convert text to int or float
+                    player_stat = float_zero_int(player_stat)
+                    # convert age to years
+                    if stat_tag == "age":
+                        player_stat = age_format(player_stat)
+                    # convert position code to position name    
+                    if stat_tag == "position":
+                        player_stat = get_position(player_stat)
+                    # convert country code to country name
+                    if stat_tag == "nationality":
+                        player_stat = get_country_name(player_stat)
+                    # update team id
+                    if stat_tag == "team":
+                        if player_stat not in team_dict:
+                            team_id += 1
+                            team_dict.update({player_stat:{"team_id": team_id}})
+                            pass
+                    # skip matches stat
+                    if stat_tag == "matches":
+                        continue
+                    # declare current player    
+                    if stat_tag == "player":
+                        current_player = player_stat
+                        stats_dict[table_name].update({current_player:{}})
+                        # update player id
+                        player_id += 1
+                        stats_dict[table_name][current_player].update({"player_id":player_id})
+                        # update league and season id for current player
+                        stats_dict[table_name][current_player].update({"league_id":league_id, "season_id":season_id})
+                    if stat_tag == "team":
+                            if player_stat in team_dict:
+                                # update team id for current player
+                                current_team_id = team_dict[player_stat]["team_id"]
+                                stats_dict[table_name][current_player].update({"team_id":current_team_id})
                                 pass
-                        if stat_tag == "matches":
-                            continue    
-                        if stat_tag == "player":
-                            current_player = player_stat
-                            stats_dict[table_name].update({current_player:{}})
-                            player_id += 1
-                            stats_dict[table_name][current_player].update({"player_id":player_id})
-                            stats_dict[table_name][current_player].update({"league_id":league_id, "season_id":season_id})
-                        if stat_tag == "team":
-                                if player_stat in team_dict:
-                                    current_team_id = team_dict[player_stat]["team_id"]
-                                    stats_dict[table_name][current_player].update({"team_id":current_team_id})
-                                    pass
-                        stats_dict[table_name][current_player].update({stat_tag:player_stat})
-                    
-            if table_name == "standard_stats":
-                get_all_players(stats_dict, all_players)
-            else:
-                match_player_stats(table_name, stats_dict, all_players)
-        time.sleep(5)        
+                    stats_dict[table_name][current_player].update({stat_tag:player_stat})
+        # get all players creates a dictionary of all players and their stats        
+        if table_name == "standard_stats":
+            get_all_players(stats_dict, all_players)
+        else:
+        # match player stats - matches player stats to existing players in all players dictionary
+            match_player_stats(table_name, stats_dict, all_players)
+                 
     all_stats = {"players": all_players, "leagues": league_dict, "seasons": season_dict, "teams": team_dict}
     get_datatype(all_stats, id_datatype)
+    # creeate json file for all stats for each all players
     get_json_data(all_stats, "Top 5 Leagues")
+    #upload data to mysql database
     upload_data(all_stats, id_datatype, cursor)
+
 # input urls for each league #################################################
 league_urls = [
         "https://fbref.com/en/comps/9/stats/Premier-League-Stats",
-        "https://fbref.com/en/comps/12/stats/La-Liga-Stats",
-        "https://fbref.com/en/comps/11/stats/Serie-A-Stats",
-        "https://fbref.com/en/comps/20/stats/Bundesliga-Stats",
-        "https://fbref.com/en/comps/13/stats/Ligue-1-Stats"   
+      #  "https://fbref.com/en/comps/12/stats/La-Liga-Stats",
+      # "https://fbref.com/en/comps/11/stats/Serie-A-Stats",
+       # "https://fbref.com/en/comps/20/stats/Bundesliga-Stats",
+       # "https://fbref.com/en/comps/13/stats/Ligue-1-Stats"   
     ]
 get_data(league_urls)
+
+# close mysql database connection ###########################################
 cursor.close()
 cnx.close()
