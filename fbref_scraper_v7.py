@@ -691,7 +691,5 @@ league_urls = [
         "https://fbref.com/en/comps/13/stats/Ligue-1-Stats"   
     ]
 get_data(league_urls)
-
-
-
-
+cursor.close()
+cnx.close()
