@@ -632,7 +632,7 @@ def get_stats():
 # run get_stats() function 
 # run get_stats() function 
 get_stats()
-
+print(player_stats)
 # converts player_stats dict to json for easy reading
 player_stats_json = json.dumps(player_stats, indent = 4, ensure_ascii=False)
 print(player_stats_json)
@@ -757,6 +757,7 @@ for player, stats in player_stats.items():
       progressive_passes_received, goals_per90, assists_per90, goals_assists_per90,
       goals_pens_per90, goals_assists_pens_per90, xg_per90, xg_assist_per90,
       xg_xg_assist_per90, npxg_per90, npxg_xg_assist_per90))
+  
 
 cnx.commit()
 cursor.close()

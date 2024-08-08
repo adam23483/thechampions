@@ -1,11 +1,9 @@
 # The Champions Project
-#### Note:
-- This project is free-flowing and my end goals might change over time. 
-- Working on this between school and work so updates will be infrequent 
-
-
+## PowerBI Dashboard
+### [Link to Dashboard](https://app.powerbi.com/groups/me/reports/e4ebd868-41d8-4360-868b-0653656930b7/ReportSection?experience=power-bi)
+![image](https://github.com/adam23483/thechampions/assets/63423355/778082ff-388b-454d-9c1d-0273d7f8cfa6)
 ## Overview
-TheChampions is a project focused on collecting data on soccer players, storing it in a MySQL database, creating a Rest API hosted on AWS, and developing a frontend for data analysis. Additionally, the project aims to integrate a Generative AI (Gen AI) to provide insights based on the collected dataset.
+TheChampions is a project focused on collecting data on soccer players, storing it in an SQL database hosted on AWS, and developing a dashboard for data analysis. Additionally, the project aims to integrate a Generative AI (Gen AI) to provide insights based on the dataset.
 
 ## Goals
 - Collecting data on soccer players
@@ -14,11 +12,11 @@ TheChampions is a project focused on collecting data on soccer players, storing 
   - automate the web scraping, ie every day update stats
   - 
 - Creating a database to store the data
-  -  MySQL database
-  -  Create Rest API: to be hosted on AWS
-    
+  -  MySQL database - *currently stored locally but will move to AWS*
+  
 - Fronted to Display/Filter data for easy analysis
-  - graphs, tables, in-form players
+  - Power BI dashboard
+    - graphs, tables, in-form players
 
 - Gen AI integration
   - Using dataset to train/fine-tune GPT or similar models for queries
@@ -41,10 +39,38 @@ TheChampions is a project focused on collecting data on soccer players, storing 
 ### 01/11/2024
 - Python to MYSQL database is working
   - Solved issues with text, float, and int formatting
-  - Now creating a schema for DB (should have done that before uploading data)
+  - Now creating a schema for DB
   - Next:
     - automate updating the DB every day or 12 hours 
     - finetune GPT with dataset
     - create a chatbot page with web hosting
-  
-
+### 02/02/2024
+- Python to MYSQL database is working 
+  - Data from:
+    - Premier League = 'https://fbref.com/en/comps/9/stats/Premier-League-Stats'
+    - La Liga - 'https://fbref.com/en/comps/12/stats/La-Liga-Stats'
+    - Serie A -'https://fbref.com/en/comps/11/stats/Serie-A-Stats'
+    - Bundesliga - 'https://fbref.com/en/comps/20/stats/Bundesliga-Stats'
+    - Ligue 1 - 'https://fbref.com/en/comps/13/stats/Ligue-1-Stats'
+  - Schema for DB, (FK, PK setup as well)
+  - added Excel export from the MySQL database
+  - Next: 
+    - add previous seasons 
+    - create PowerBI dashboard  
+    - finetune GPT with dataset
+    - create chatbot that can integrate with the dashboard based on training data
+    - automate updating the DB every day or 12 hours ***on hold until all other tasks are done***
+### 03/19/2024
+- Reworking Python to MYSQL database script   
+  - Needed more data for player performance 9 more pages per league 
+    - New script dynamically scrapes data from each page. 
+    - creates json for easy reading and bug fixing  
+  - Adding data from Transfermarkt  
+    - new data - transfer values, salaries, contract info, player physical stats
+  - Power PI dashboard  
+    - Created Power PI dashboard
+      - reworking after all data is ready for 2023/2024 database
+  - Next: 
+    - finetune GPT with dataset 
+    - create a chatbot that can integrate with the dashboard based on training data for prompts 
+    - automate updating the DB every day or 12 hours ***on hold until all other tasks are done***
